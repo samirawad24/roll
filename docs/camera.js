@@ -100,18 +100,61 @@ function torchTrack() {
   return caps.torch ? track : null;
 }
 
-// Crop the live frame to the same 2:3 window the viewfinder shows.
+// How the phone is physically held, from gravity: 0 upright, 90 turned
+// counterclockwise, -90 clockwise, 180 upside down. Lets a sideways shot come
+// out sideways even when rotation lock keeps the page upright.
+let deviceAngle = 0;
+const isIOS = typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function';
+
+function onMotion(e) {
+  const g = e.accelerationIncludingGravity;
+  if (!g || g.x === null) return;
+  // iOS reports gravity with the opposite sign of the spec (and of Android).
+  const x = isIOS ? -g.x : g.x;
+  const y = isIOS ? -g.y : g.y;
+  // Lying flat or mid-swing: keep the last reading.
+  if (Math.max(Math.abs(x), Math.abs(y)) < 5) return;
+  if (Math.abs(y) >= Math.abs(x) * 1.3) deviceAngle = y > 0 ? 0 : 180;
+  else if (Math.abs(x) >= Math.abs(y) * 1.3) deviceAngle = x > 0 ? 90 : -90;
+}
+
+async function watchMotion() {
+  try {
+    if (isIOS && (await DeviceMotionEvent.requestPermission()) !== 'granted') return;
+    window.addEventListener('devicemotion', onMotion);
+  } catch {}
+}
+
+function screenAngle() {
+  if (typeof window.orientation === 'number') return window.orientation;
+  const a = screen.orientation?.angle || 0;
+  return a > 180 ? a - 360 : a;
+}
+
+// Crop the live frame to the same window the viewfinder shows (2:3 upright,
+// 3:2 when the page is sideways), then turn it if the phone is held sideways
+// while the page is not.
 function grabFrame() {
   const vw = video.videoWidth, vh = video.videoHeight;
-  const portrait = vh >= vw;
+  const portrait = window.innerHeight >= window.innerWidth;
   const target = portrait ? 2 / 3 : 3 / 2;
   let sw = vw, sh = vh;
   if (vw / vh > target) sw = Math.round(vh * target);
   else sh = Math.round(vw / target);
+
+  let turn = (deviceAngle - screenAngle()) % 360;
+  if (turn > 180) turn -= 360;
+  if (turn <= -180) turn += 360;
+  const sideways = Math.abs(turn) === 90;
+
   const c = document.createElement('canvas');
-  c.width = sw;
-  c.height = sh;
-  c.getContext('2d').drawImage(video, (vw - sw) / 2, (vh - sh) / 2, sw, sh, 0, 0, sw, sh);
+  c.width = sideways ? sh : sw;
+  c.height = sideways ? sw : sh;
+  const ctx = c.getContext('2d');
+  ctx.translate(c.width / 2, c.height / 2);
+  ctx.rotate((-turn * Math.PI) / 180);
+  if (facing === 'user' && sideways) ctx.scale(-1, -1);
+  ctx.drawImage(video, (vw - sw) / 2, (vh - sh) / 2, sw, sh, -sw / 2, -sh / 2, sw, sh);
   return c;
 }
 
@@ -235,6 +278,7 @@ $('load-form').addEventListener('submit', async (e) => {
   if (!name) return;
   store.set('name', name);
   sound.unlock();
+  await watchMotion();
   await openCamera();
 });
 
