@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#1b1712">
+<title>Roll</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<section id="load" class="screen">
+  <div class="load-inner">
+    <h1 class="wordmark">Roll</h1>
+    <p class="tagline">in the moment</p>
+    <p class="lede">Take photos tonight. Nobody sees them, you included, until the host develops the roll.</p>
+    <form id="load-form">
+      <label for="name">Your name</label>
+      <input id="name" name="name" autocomplete="given-name" maxlength="30" required placeholder="So people know who shot what">
+      <button type="submit" class="btn">Load the film</button>
+    </form>
+    <p id="load-error" class="error" hidden></p>
+    <p class="fine">27 exposures each. No retakes.</p>
+  </div>
+</section>
+
+<section id="camera" class="screen" hidden>
+  <div class="finder-wrap">
+    <div class="finder" id="finder">
+      <video id="video" playsinline muted autoplay></video>
+      <div class="finder-marks" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+      <div class="blink" id="blink"></div>
+    </div>
+  </div>
+
+  <div class="body">
+    <div class="controls">
+      <div class="counter" aria-live="polite">
+        <span id="count">27</span>
+        <small>left</small>
+      </div>
+      <button id="shutter" class="shutter" aria-label="Take photo"></button>
+      <div class="toggles">
+        <button id="flash" class="toggle" aria-pressed="false">Flash off</button>
+        <button id="flip" class="toggle">Flip</button>
+      </div>
+    </div>
+
+    <div class="wind" id="wind" role="slider" aria-label="Wind the film" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100" tabindex="0">
+      <div class="wheel" id="wheel"></div>
+      <span class="wind-hint" id="wind-hint">Drag to wind</span>
+    </div>
+
+    <div class="label">
+      <span class="label-name">Roll</span>
+      <span class="label-tag">in the moment</span>
+      <span class="label-spec">ISO 400 &middot; 27 EXP</span>
+    </div>
+    <p class="status" id="status"></p>
+  </div>
+  <div class="white" id="white"></div>
+  <button id="dev-thumb" class="dev-thumb" hidden></button>
+</section>
+
+<section id="done" class="screen" hidden>
+  <div class="load-inner">
+    <h1 class="wordmark">That's the roll.</h1>
+    <p class="lede">All 27 frames are shot. They develop when the host says so. Keep this link, it turns into the gallery.</p>
+    <p class="status" id="done-status"></p>
+  </div>
+</section>
+
+<script type="module" src="camera.js"></script>
+</body>
+</html>
