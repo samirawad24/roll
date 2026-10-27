@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#1b1712">
+<title>Roll Darkroom</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,800&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<style>
+  .dark { max-width: 900px; margin: 0 auto; padding: calc(24px + env(safe-area-inset-top)) 16px 48px; }
+  .dark .wordmark { font-size: 48px; }
+  .dark .lede { margin: 14px 0 20px; }
+  .actions { display: flex; gap: 10px; margin-bottom: 20px; }
+  .actions .btn { width: auto; padding: 12px 18px; font-size: 16px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+  .grid figure { margin: 0; }
+  .grid img { width: 100%; display: block; border-radius: 4px; background: #0f0d0a; }
+  .grid figcaption { font-family: var(--mono); font-size: 11px; color: var(--cream-dim); margin-top: 4px; }
+  .view { position: fixed; inset: 0; background: rgba(10,8,6,0.96); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 5; }
+  .view img { max-width: 100%; max-height: 100%; object-fit: contain; }
+</style>
+</head>
+<body>
+<main class="dark">
+  <h1 class="wordmark">Darkroom</h1>
+  <p class="tagline">test only, reads this phone</p>
+  <p class="lede" id="lede">Developing...</p>
+  <div class="actions" id="actions" hidden>
+    <button class="btn" id="save">Save all to Photos</button>
+  </div>
+  <div class="grid" id="grid"></div>
+</main>
+<div class="view" id="view" hidden><img id="view-img" alt=""></div>
+
+<script type="module">
+import { all } from './queue.js';
+
+const params = new URLSearchParams(location.search);
+const only = params.get('e');
+const grid = document.getElementById('grid');
+const view = document.getElementById('view');
+
+const items = (await all()).filter((p) => !only || p.eventId === only);
+const lede = document.getElementById('lede');
+
+if (!items.length) {
+  lede.textContent = 'No frames found in this browser. Open this page in the same browser you shot with (not a private tab).';
+} else {
+  const rolls = new Set(items.map((p) => p.eventId)).size;
+  lede.textContent = `${items.length} frames${rolls > 1 ? ` across ${rolls} rolls` : ''}. Tap one to see it big, or press and hold to save it.`;
+  document.getElementById('actions').hidden = false;
+  for (const p of items) {
+    const url = URL.createObjectURL(p.blob);
+    const fig = document.createElement('figure');
+    const img = document.createElement('img');
+    img.src = url;
+    img.alt = `Frame by ${p.name}`;
+    img.loading = 'lazy';
+    img.onclick = () => { document.getElementById('view-img').src = url; view.hidden = false; };
+    const cap = document.createElement('figcaption');
+    cap.textContent = `${p.eventId} · ${p.name} · ${new Date(p.takenAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+    fig.append(img, cap);
+    grid.append(fig);
+  }
+}
+
+view.onclick = () => { view.hidden = true; };
+
+document.getElementById('save').onclick = async () => {
+  const files = items.map((p, i) => new File([p.blob], `roll-${p.eventId}-${String(i + 1).padStart(2, '0')}.jpg`, { type: 'image/jpeg' }));
+  if (navigator.canShare?.({ files })) {
+    try { await navigator.share({ files }); } catch {}
+    return;
+  }
+  for (const f of files) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(f);
+    a.download = f.name;
+    a.click();
+    await new Promise((r) => setTimeout(r, 250));
+  }
+};
+</script>
+</body>
+</html>
